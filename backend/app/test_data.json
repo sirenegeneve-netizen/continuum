@@ -1,0 +1,28 @@
+[
+  {
+    "id": "cpu-1",
+    "name": "CPU Server 1",
+    "type": "metric",
+    "value": 72,
+    "unit": "%",
+    "status": "active",
+    "timestamp": "2026-06-03T16:00:00"
+  },
+  {
+    "id": "ram-1",
+    "name": "RAM Server 1",
+    "type": "metric",
+    "value": 61,
+    "unit": "%",
+    "status": "active",
+    "timestamp": "2026-06-03T16:00:00"
+  },
+  {
+    "id": "db-main",
+    "name": "Primary Database",
+    "type": "service",
+    "status": "healthy",
+    "region": "eu-west",
+    "timestamp": "2026-06-03T15:55:00"
+  }
+]
