@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, Boolean, DateTime, Table, ForeignKey, Integer
+from sqlalchemy import create_engine, Column, String, Boolean, DateTime, Table, ForeignKey, Integer, Text, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -8,10 +8,8 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# Table de liaison utilisateur <-> services
 user_services = Table(
-    "user_services",
-    Base.metadata,
+    "user_services", Base.metadata,
     Column("user_id", String, ForeignKey("utilisateurs.id")),
     Column("service_id", Integer, ForeignKey("services.id"))
 )
@@ -23,6 +21,7 @@ class ServiceDB(Base):
     description = Column(String, nullable=True)
     couleur = Column(String, default="#3b82f6")
     utilisateurs = relationship("UtilisateurDB", secondary=user_services, back_populates="services")
+    connecteurs = relationship("ConnecteurDB", back_populates="service")
 
 class UtilisateurDB(Base):
     __tablename__ = "utilisateurs"
@@ -36,6 +35,53 @@ class UtilisateurDB(Base):
     actif = Column(Boolean, default=True)
     date_creation = Column(DateTime, default=datetime.now)
     services = relationship("ServiceDB", secondary=user_services, back_populates="utilisateurs")
+
+class ConnecteurDB(Base):
+    __tablename__ = "connecteurs"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nom = Column(String)
+    type = Column(String)  # jira, erp, dpi, custom
+    description = Column(String, nullable=True)
+    service_id = Column(Integer, ForeignKey("services.id"), nullable=True)  # null = global
+    champs = Column(JSON)  # liste des champs configurés
+    mode_import = Column(String, default="fichier")  # fichier ou api
+    actif = Column(Boolean, default=True)
+    date_creation = Column(DateTime, default=datetime.now)
+    service = relationship("ServiceDB", back_populates="connecteurs")
+    enregistrements = relationship("EnregistrementDB", back_populates="connecteur", cascade="all, delete")
+
+class EnregistrementDB(Base):
+    __tablename__ = "enregistrements"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    connecteur_id = Column(Integer, ForeignKey("connecteurs.id"))
+    donnees = Column(JSON)  # valeurs des champs
+    date_import = Column(DateTime, default=datetime.now)
+    importe_par = Column(String, nullable=True)
+    connecteur = relationship("ConnecteurDB", back_populates="enregistrements")
+    modifications = relationship("ModificationDB", back_populates="enregistrement", cascade="all, delete")
+    commentaires = relationship("CommentaireDB", back_populates="enregistrement", cascade="all, delete")
+
+class ModificationDB(Base):
+    __tablename__ = "modifications"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    enregistrement_id = Column(Integer, ForeignKey("enregistrements.id"))
+    champ = Column(String)
+    valeur_avant = Column(Text, nullable=True)
+    valeur_apres = Column(Text, nullable=True)
+    modifie_par = Column(String)
+    modifie_par_nom = Column(String)
+    date_modification = Column(DateTime, default=datetime.now)
+    enregistrement = relationship("EnregistrementDB", back_populates="modifications")
+
+class CommentaireDB(Base):
+    __tablename__ = "commentaires"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    enregistrement_id = Column(Integer, ForeignKey("enregistrements.id"))
+    texte = Column(Text)
+    auteur = Column(String)
+    auteur_nom = Column(String)
+    date = Column(DateTime, default=datetime.now)
+    enregistrement = relationship("EnregistrementDB", back_populates="commentaires")
 
 def get_db():
     db = SessionLocal()

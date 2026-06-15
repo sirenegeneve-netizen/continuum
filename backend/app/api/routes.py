@@ -2,13 +2,14 @@ from fastapi import APIRouter
 from app.core.snapshot import create_snapshot
 from app.core.recovery import load_latest_snapshot
 from app.models import CriticalData
-from app.api import users, services
+from app.api import users, services, continuite
 
 router = APIRouter()
 db = {}
 
 router.include_router(users.router, tags=["Utilisateurs"])
 router.include_router(services.router, tags=["Services"])
+router.include_router(continuite.router, tags=["Continuité de service"])
 
 @router.post("/snapshot")
 def snapshot(data: dict):
