@@ -6,6 +6,7 @@ import Procedures from "../components/Procedures"
 import Contacts from "../components/Contacts"
 import Users from "./Users"
 import Incident from "./Incident"
+import ContinuiteService from "./ContinuiteService"
 
 export default function Home({ page, setPage, onDeconnexion }) {
   return (
@@ -24,8 +25,9 @@ export default function Home({ page, setPage, onDeconnexion }) {
               </div>
             </div>
           )}
-          {page === "incident" && <Incident />}
-          {page === "users" && <Users />}
+          {page === "incident"  && <Incident />}
+          {page === "users"     && <Users />}
+          {page === "continuite" && <ContinuiteService />}
         </div>
       </div>
     </div>

@@ -1,0 +1,17 @@
+backend/main.py
+backend/app/db/__init__.py
+backend/app/db/database.py
+backend/app/core/snapshot.py
+backend/app/core/versioning.py
+backend/app/core/__init__.py
+backend/app/core/recovery.py
+backend/app/__init__.py
+backend/app/api/auth.py
+backend/app/api/services.py
+backend/app/api/users.py
+backend/app/api/continuite.py
+backend/app/api/__init__.py
+backend/app/api/routes.py
+backend/app/roles.py
+backend/app/security.py
+backend/app/models.py

@@ -22,6 +22,16 @@ export default function Login({ onConnexion }) {
         setErreur(data.detail || "Erreur de connexion")
       } else {
         localStorage.setItem("token", data.access_token)
+        // Récupérer le rôle et les infos utilisateur
+        const meRes = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${data.access_token}` }
+        })
+        if (meRes.ok) {
+          const me = await meRes.json()
+          localStorage.setItem("role", me.role)
+          localStorage.setItem("user_nom", `${me.prenom} ${me.nom}`)
+          localStorage.setItem("user_email", me.email)
+        }
         onConnexion()
       }
     } catch (e) {
@@ -34,11 +44,7 @@ export default function Login({ onConnexion }) {
     <div style={{ display: "flex", height: "100vh", fontFamily: "Arial" }}>
       <div style={{ width: "280px", background: "#1a1f36", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "32px 28px", flexShrink: 0 }}>
         <div>
-          <img
-  src="/logos/conti-mire.png"
-  alt="Continuum"
-  style={{ width: "300px", height: "auto" }}
-/>
+          <img src="/logos/conti-mire.png" alt="Continuum" style={{ width: "300px", height: "auto" }} />
           <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginTop: "4px" }}>Continuité & Reprise d'activité</div>
         </div>
         <div>
@@ -61,10 +67,15 @@ export default function Login({ onConnexion }) {
             </div>
           )}
           <label style={{ fontSize: "12px", color: "#374151", marginBottom: "5px", display: "block" }}>Adresse email</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="prenom.nom@organisation.fr" style={{ width: "100%", height: "36px", border: "0.5px solid #d1d5db", borderRadius: "8px", padding: "0 12px", fontSize: "13px", marginBottom: "14px", outline: "none" }} />
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="prenom.nom@organisation.fr"
+            style={{ width: "100%", height: "36px", border: "0.5px solid #d1d5db", borderRadius: "8px", padding: "0 12px", fontSize: "13px", marginBottom: "14px", outline: "none" }}
+            onKeyDown={e => e.key === "Enter" && handleConnexion()} />
           <label style={{ fontSize: "12px", color: "#374151", marginBottom: "5px", display: "block" }}>Mot de passe</label>
-          <input type="password" value={motDePasse} onChange={e => setMotDePasse(e.target.value)} placeholder="••••••••" style={{ width: "100%", height: "36px", border: "0.5px solid #d1d5db", borderRadius: "8px", padding: "0 12px", fontSize: "13px", marginBottom: "20px", outline: "none" }} />
-          <button onClick={handleConnexion} disabled={chargement} style={{ width: "100%", height: "36px", background: chargement ? "#9ca3af" : "#1a1f36", color: "#fff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 500, cursor: "pointer" }}>
+          <input type="password" value={motDePasse} onChange={e => setMotDePasse(e.target.value)} placeholder="••••••••"
+            style={{ width: "100%", height: "36px", border: "0.5px solid #d1d5db", borderRadius: "8px", padding: "0 12px", fontSize: "13px", marginBottom: "20px", outline: "none" }}
+            onKeyDown={e => e.key === "Enter" && handleConnexion()} />
+          <button onClick={handleConnexion} disabled={chargement}
+            style={{ width: "100%", height: "36px", background: chargement ? "#9ca3af" : "#1a1f36", color: "#fff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 500, cursor: "pointer" }}>
             {chargement ? "Connexion..." : "Se connecter"}
           </button>
         </div>

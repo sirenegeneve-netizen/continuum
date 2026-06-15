@@ -1,0 +1,93 @@
+.
+├── .gitignore
+├── README.md
+├── backend
+│   ├── __pycache__
+│   │   └── main.cpython-312.pyc
+│   ├── app
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-312.pyc
+│   │   │   ├── models.cpython-312.pyc
+│   │   │   ├── roles.cpython-312.pyc
+│   │   │   └── security.cpython-312.pyc
+│   │   ├── api
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── __init__.cpython-312.pyc
+│   │   │   │   ├── auth.cpython-312.pyc
+│   │   │   │   ├── continuite.cpython-312.pyc
+│   │   │   │   ├── routes.cpython-312.pyc
+│   │   │   │   ├── services.cpython-312.pyc
+│   │   │   │   └── users.cpython-312.pyc
+│   │   │   ├── auth.py
+│   │   │   ├── continuite.py
+│   │   │   ├── routes.py
+│   │   │   ├── services.py
+│   │   │   └── users.py
+│   │   ├── core
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── __init__.cpython-312.pyc
+│   │   │   │   ├── recovery.cpython-312.pyc
+│   │   │   │   └── snapshot.cpython-312.pyc
+│   │   │   ├── recovery.py
+│   │   │   ├── snapshot.py
+│   │   │   └── versioning.py
+│   │   ├── db
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── __init__.cpython-312.pyc
+│   │   │   │   └── database.cpython-312.pyc
+│   │   │   └── database.py
+│   │   ├── models.py
+│   │   ├── roles.py
+│   │   ├── security.py
+│   │   └── test_data.json
+│   ├── continuum.db
+│   └── main.py
+├── fichiers.txt
+├── frontend
+│   ├── .gitignore
+│   ├── README.md
+│   ├── __pycache__
+│   │   └── main.cpython-312.pyc
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── public
+│   │   └── logos
+│   │       ├── conti-black.png
+│   │       ├── conti-mire.png
+│   │       ├── conti-white.png
+│   │       └── favicon-conti.png
+│   ├── src
+│   │   ├── App.css
+│   │   ├── App.jsx
+│   │   ├── assets
+│   │   │   ├── hero.png
+│   │   │   ├── react.svg
+│   │   │   └── vite.svg
+│   │   ├── components
+│   │   │   ├── AlertBar.jsx
+│   │   │   ├── Contacts.jsx
+│   │   │   ├── Header.jsx
+│   │   │   ├── Metrics.jsx
+│   │   │   ├── Procedures.jsx
+│   │   │   └── Sidebar.jsx
+│   │   ├── index.css
+│   │   ├── main.jsx
+│   │   └── pages
+│   │       ├── ContinuiteService.jsx
+│   │       ├── Home.jsx
+│   │       ├── Incident.jsx
+│   │       ├── Login.jsx
+│   │       └── Users.jsx
+│   └── vite.config.js
+├── projet.zip
+├── storage
+│   └── snapshots
+└── structure.txt
+
+21 directories, 70 files
