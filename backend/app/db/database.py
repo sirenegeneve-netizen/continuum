@@ -14,6 +14,12 @@ user_services = Table(
     Column("service_id", Integer, ForeignKey("services.id"))
 )
 
+connecteur_services = Table(
+    "connecteur_services", Base.metadata,
+    Column("connecteur_id", Integer, ForeignKey("connecteurs.id")),
+    Column("service_id", Integer, ForeignKey("services.id"))
+)
+
 class ServiceDB(Base):
     __tablename__ = "services"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -21,7 +27,7 @@ class ServiceDB(Base):
     description = Column(String, nullable=True)
     couleur = Column(String, default="#3b82f6")
     utilisateurs = relationship("UtilisateurDB", secondary=user_services, back_populates="services")
-    connecteurs = relationship("ConnecteurDB", back_populates="service")
+    connecteurs = relationship("ConnecteurDB", secondary=connecteur_services, back_populates="services")
 
 class UtilisateurDB(Base):
     __tablename__ = "utilisateurs"
@@ -40,21 +46,21 @@ class ConnecteurDB(Base):
     __tablename__ = "connecteurs"
     id = Column(Integer, primary_key=True, autoincrement=True)
     nom = Column(String)
-    type = Column(String)  # jira, erp, dpi, custom
+    type = Column(String)
     description = Column(String, nullable=True)
-    service_id = Column(Integer, ForeignKey("services.id"), nullable=True)  # null = global
-    champs = Column(JSON)  # liste des champs configurés
-    mode_import = Column(String, default="fichier")  # fichier ou api
+    global_ = Column(Boolean, default=False)
+    champs = Column(JSON)
+    mode_import = Column(String, default="fichier")
     actif = Column(Boolean, default=True)
     date_creation = Column(DateTime, default=datetime.now)
-    service = relationship("ServiceDB", back_populates="connecteurs")
+    services = relationship("ServiceDB", secondary=connecteur_services, back_populates="connecteurs")
     enregistrements = relationship("EnregistrementDB", back_populates="connecteur", cascade="all, delete")
 
 class EnregistrementDB(Base):
     __tablename__ = "enregistrements"
     id = Column(Integer, primary_key=True, autoincrement=True)
     connecteur_id = Column(Integer, ForeignKey("connecteurs.id"))
-    donnees = Column(JSON)  # valeurs des champs
+    donnees = Column(JSON)
     date_import = Column(DateTime, default=datetime.now)
     importe_par = Column(String, nullable=True)
     connecteur = relationship("ConnecteurDB", back_populates="enregistrements")
