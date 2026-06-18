@@ -282,6 +282,11 @@ def modifier_champ(enregistrement_id: int, data: ModificationChamp, db: Session 
     svc_ids = services_accessibles(user, db)
     if not c.global_ and not any(s.id in svc_ids for s in c.services):
         raise HTTPException(status_code=403, detail="Accès refusé")
+
+    champ_config = next((ch for ch in (c.champs or []) if ch["id"] == data.champ), None)
+    if champ_config and champ_config.get("verrouille"):
+        raise HTTPException(status_code=403, detail=f"Le champ '{champ_config.get('label', data.champ)}' est verrouillé et ne peut pas être modifié")
+
     valeur_avant = (e.donnees or {}).get(data.champ, "")
     nouvelles_donnees = dict(e.donnees or {})
     nouvelles_donnees[data.champ] = data.valeur

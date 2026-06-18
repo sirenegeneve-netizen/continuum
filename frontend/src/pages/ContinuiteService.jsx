@@ -25,7 +25,7 @@ const CHAMPS_PREDEFINIS = {
     { id: "statut",      label: "Statut",       type: "text" },
   ],
   dpi:    [
-    { id: "id_patient",    label: "ID Patient",            type: "text" },
+    { id: "id_patient",    label: "ID Patient",            type: "text", verrouille: true },
     { id: "nom_patient",   label: "Nom patient",           type: "text" },
     { id: "constantes",    label: "Constantes",            type: "textarea" },
     { id: "prescriptions", label: "Prescriptions en cours",type: "textarea" },
@@ -451,7 +451,10 @@ export default function ContinuiteService() {
                         ) : (
                           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:"8px" }}>
                             <span style={{ fontSize:"13px", color:valeur?"#111":"#d1d5db", whiteSpace:"pre-wrap" }}>{valeur || "—"}</span>
-                            <button style={s.btnSm} onClick={() => { setChampEnEdition(`${ligneOuverte.id}_${ch.id}`); setValeurEdition(valeur) }}>✏️</button>
+                            {ch.verrouille
+                              ? <span style={{ fontSize:"11px", color:"#9ca3af" }} title="Champ verrouillé">🔒</span>
+                              : <button style={s.btnSm} onClick={() => { setChampEnEdition(`${ligneOuverte.id}_${ch.id}`); setValeurEdition(valeur) }}>✏️</button>
+                            }
                           </div>
                         )}
                       </div>
@@ -581,7 +584,7 @@ export default function ContinuiteService() {
                 <button style={s.btnSm} onClick={ajouterChamp}>+ Ajouter un champ</button>
               </div>
               {formConn.champs.map((ch, idx) => (
-                <div key={idx} style={s.dragRow}
+                <div key={idx} style={{ ...s.dragRow, gridTemplateColumns:"24px 1fr 1fr 80px 70px 32px" }}
                   draggable
                   onDragStart={() => onDragStart(idx)}
                   onDragOver={e => onDragOver(e, idx)}
@@ -596,6 +599,10 @@ export default function ContinuiteService() {
                     <option value="textarea">Texte long</option>
                     <option value="number">Nombre</option>
                   </select>
+                  <label style={{ display:"flex", alignItems:"center", gap:"4px", fontSize:"11px", color:"#6b7280", cursor:"pointer" }} title="Champ non modifiable une fois importé">
+                    <input type="checkbox" checked={!!ch.verrouille} onChange={e => modifierChampForm(idx,"verrouille",e.target.checked)} />
+                    🔒
+                  </label>
                   <button style={s.btnDanger} onClick={() => supprimerChampForm(idx)}>✕</button>
                 </div>
               ))}
