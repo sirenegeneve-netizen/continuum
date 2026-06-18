@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 
 const API_URL = "https://psychic-space-guide-r74pjwv5qw4pcxvr6-8000.app.github.dev"
 
@@ -36,6 +36,9 @@ const CHAMPS_PREDEFINIS = {
 
 function getToken() { return localStorage.getItem("token") || "" }
 function getRole()  { return localStorage.getItem("role")  || "" }
+function getMesServiceIds() {
+  try { return JSON.parse(localStorage.getItem("user_service_ids") || "[]") } catch { return [] }
+}
 const ROLES_ADMIN = ["super_admin", "admin_org", "bcm"]
 function estAdmin() { return ROLES_ADMIN.includes(getRole()) }
 
@@ -54,19 +57,20 @@ export default function ContinuiteService() {
   const [ongletDetail, setOngletDetail]       = useState("donnees")
   const [loading, setLoading]                 = useState(false)
   const [message, setMessage]                 = useState("")
+  const [filtreService, setFiltreService]     = useState("tous")
   const fichierRef = useRef()
 
-  // Drag & drop
   const dragIdx = useRef(null)
   const dragOverIdx = useRef(null)
 
-  // Formulaire connecteur
   const [formConn, setFormConn] = useState({
     nom: "", type: "jira", description: "",
     global_: false, service_ids: [], champs: [], mode_import: "fichier"
   })
   const [editConnId, setEditConnId] = useState(null)
   const [errConn, setErrConn]       = useState("")
+
+  const mesServiceIds = getMesServiceIds()
 
   useEffect(() => { chargerConnecteurs(); chargerServices() }, [])
 
@@ -85,6 +89,18 @@ export default function ContinuiteService() {
   async function chargerServices() {
     try { setServices(await api("/services")) } catch {}
   }
+
+  // Services pertinents pour le sélecteur : ceux de l'utilisateur (ou tous les services si admin)
+  const mesServices = useMemo(() => {
+    if (estAdmin()) return services
+    return services.filter(s => mesServiceIds.includes(s.id))
+  }, [services])
+
+  // Connecteurs filtrés selon le service sélectionné
+  const connecteursAffiches = useMemo(() => {
+    if (filtreService === "tous") return connecteurs
+    return connecteurs.filter(c => c.global_ || (c.service_ids || []).includes(parseInt(filtreService)))
+  }, [connecteurs, filtreService])
 
   async function ouvrirConnecteur(c) {
     setConnecteurActif(c); setLigneOuverte(null); setLoading(true)
@@ -221,7 +237,6 @@ export default function ContinuiteService() {
     setFormConn({ ...formConn, champs: formConn.champs.filter((_, i) => i !== idx) })
   }
 
-  // ── DRAG & DROP ──────────────────────────────────────────────────
   function onDragStart(idx) { dragIdx.current = idx }
   function onDragOver(e, idx) { e.preventDefault(); dragOverIdx.current = idx }
   function onDrop() {
@@ -243,7 +258,7 @@ export default function ContinuiteService() {
 
   const s = {
     page:      { padding:"24px", background:"#f9fafb", minHeight:"100vh", fontFamily:"Arial, sans-serif" },
-    topbar:    { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"20px" },
+    topbar:    { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"16px", flexWrap:"wrap", gap:"12px" },
     title:     { fontSize:"18px", fontWeight:500 },
     sub:       { fontSize:"12px", color:"#6b7280", marginTop:"2px" },
     btnPri:    { background:"#1a1f36", color:"#fff", border:"none", borderRadius:"8px", padding:"8px 16px", cursor:"pointer", fontSize:"13px" },
@@ -270,6 +285,7 @@ export default function ContinuiteService() {
     commRow:   { padding:"10px 0", borderBottom:"1px solid #f3f4f6" },
     dragRow:   { display:"grid", gridTemplateColumns:"24px 1fr 1fr 80px 32px", gap:"8px", marginBottom:"8px", alignItems:"center", padding:"6px 8px", background:"#f9fafb", borderRadius:"8px", border:"1px solid #e5e7eb" },
     svcOpt:    (sel) => ({ display:"flex", alignItems:"center", gap:"8px", padding:"7px 10px", cursor:"pointer", fontSize:"13px", background:sel?"#eff6ff":"#fff", borderBottom:"1px solid #f3f4f6", borderRadius:"6px", marginBottom:"3px" }),
+    select:    { fontSize:"13px", padding:"7px 12px", borderRadius:"8px", border:"1px solid #d1d5db", background:"#fff" },
   }
 
   const champsActifs = connecteurActif ? (connecteurActif.champs || []) : []
@@ -285,19 +301,27 @@ export default function ContinuiteService() {
           <div style={s.topbar}>
             <div>
               <div style={s.title}>Continuité de service</div>
-              <div style={s.sub}>{connecteurs.length} connecteur(s) configuré(s)</div>
+              <div style={s.sub}>{connecteursAffiches.length} connecteur(s) {filtreService !== "tous" ? "pour ce service" : "configuré(s)"}</div>
             </div>
-            {estAdmin() && <button style={s.btnPri} onClick={() => ouvrirFormulaireConnecteur()}>+ Nouveau connecteur</button>}
+            <div style={{ display:"flex", gap:"8px", alignItems:"center" }}>
+              {mesServices.length > 1 && (
+                <select style={s.select} value={filtreService} onChange={e => setFiltreService(e.target.value)}>
+                  <option value="tous">🗂 Tous mes services</option>
+                  {mesServices.map(sv => <option key={sv.id} value={sv.id}>🏷 {sv.nom}</option>)}
+                </select>
+              )}
+              {estAdmin() && <button style={s.btnPri} onClick={() => ouvrirFormulaireConnecteur()}>+ Nouveau connecteur</button>}
+            </div>
           </div>
 
-          {connecteurs.length === 0
+          {connecteursAffiches.length === 0
             ? <div style={{ ...s.card, padding:"48px", textAlign:"center", color:"#6b7280" }}>
                 <div style={{ fontSize:"32px", marginBottom:"12px" }}>🔌</div>
-                <div style={{ fontWeight:500, marginBottom:"6px" }}>Aucun connecteur configuré</div>
+                <div style={{ fontWeight:500, marginBottom:"6px" }}>Aucun connecteur {filtreService !== "tous" ? "pour ce service" : "configuré"}</div>
                 <div style={{ fontSize:"13px" }}>{estAdmin() ? 'Cliquez sur "+ Nouveau connecteur"' : "Contactez un administrateur"}</div>
               </div>
             : <div style={s.grid}>
-                {connecteurs.map(c => {
+                {connecteursAffiches.map(c => {
                   const type = TYPES_CONNECTEUR[c.type] || TYPES_CONNECTEUR.custom
                   const svcs = services.filter(s => (c.service_ids || []).includes(s.id))
                   return (
@@ -391,7 +415,6 @@ export default function ContinuiteService() {
             </div>
           )}
 
-          {/* PANNEAU LIGNE */}
           {ligneOuverte && (
             <div style={s.panelRight}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"16px" }}>
@@ -523,7 +546,6 @@ export default function ContinuiteService() {
                 </select>
               </div>
 
-              {/* SERVICES */}
               <div style={{ ...s.formGrp, gridColumn:"1/-1" }}>
                 <label style={s.formLbl}>Portée</label>
                 <div style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"10px", padding:"8px 12px", background:"#f9fafb", borderRadius:"8px", border:"1px solid #e5e7eb" }}>
@@ -553,14 +575,13 @@ export default function ContinuiteService() {
               </div>
             </div>
 
-            {/* CHAMPS AVEC DRAG & DROP */}
             <div style={{ marginBottom:"16px" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"10px" }}>
                 <label style={s.formLbl}>Champs de données <span style={{ fontWeight:400, color:"#9ca3af" }}>(glissez pour réordonner)</span></label>
                 <button style={s.btnSm} onClick={ajouterChamp}>+ Ajouter un champ</button>
               </div>
               {formConn.champs.map((ch, idx) => (
-                <div key={idx} style={{ ...s.dragRow, opacity:1 }}
+                <div key={idx} style={s.dragRow}
                   draggable
                   onDragStart={() => onDragStart(idx)}
                   onDragOver={e => onDragOver(e, idx)}

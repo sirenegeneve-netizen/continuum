@@ -46,4 +46,10 @@ def get_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     user = db.query(UtilisateurDB).filter(UtilisateurDB.email == payload.get("sub")).first()
     if not user:
         raise HTTPException(status_code=401, detail="Utilisateur introuvable")
-    return {"email": user.email, "nom": user.nom, "prenom": user.prenom, "role": user.role}
+    return {
+        "email": user.email,
+        "nom": user.nom,
+        "prenom": user.prenom,
+        "role": user.role,
+        "service_ids": [s.id for s in user.services]
+    }

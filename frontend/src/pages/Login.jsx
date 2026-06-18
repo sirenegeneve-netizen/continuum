@@ -22,7 +22,6 @@ export default function Login({ onConnexion }) {
         setErreur(data.detail || "Erreur de connexion")
       } else {
         localStorage.setItem("token", data.access_token)
-        // Récupérer le rôle et les infos utilisateur
         const meRes = await fetch(`${API_URL}/auth/me`, {
           headers: { Authorization: `Bearer ${data.access_token}` }
         })
@@ -31,6 +30,7 @@ export default function Login({ onConnexion }) {
           localStorage.setItem("role", me.role)
           localStorage.setItem("user_nom", `${me.prenom} ${me.nom}`)
           localStorage.setItem("user_email", me.email)
+          localStorage.setItem("user_service_ids", JSON.stringify(me.service_ids || []))
         }
         onConnexion()
       }
