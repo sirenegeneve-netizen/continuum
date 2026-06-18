@@ -8,6 +8,21 @@ import Users from "./Users"
 import Incident from "./Incident"
 import ContinuiteService from "./ContinuiteService"
 
+const ROLES_ADMIN_PLATEFORME = ["super_admin", "admin_org"]
+function estAdminPlateforme() {
+  return ROLES_ADMIN_PLATEFORME.includes(localStorage.getItem("role") || "")
+}
+
+function AccesRefuse() {
+  return (
+    <div style={{ padding: "60px 24px", textAlign: "center", color: "#6b7280" }}>
+      <div style={{ fontSize: "32px", marginBottom: "12px" }}>🔒</div>
+      <div style={{ fontWeight: 500, marginBottom: "6px", fontSize: "15px" }}>Accès refusé</div>
+      <div style={{ fontSize: "13px" }}>Cette section est réservée aux administrateurs de la plateforme.</div>
+    </div>
+  )
+}
+
 export default function Home({ page, setPage, onDeconnexion }) {
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "Arial" }}>
@@ -25,8 +40,8 @@ export default function Home({ page, setPage, onDeconnexion }) {
               </div>
             </div>
           )}
-          {page === "incident"  && <Incident />}
-          {page === "users"     && <Users />}
+          {page === "incident"   && <Incident />}
+          {page === "users"      && (estAdminPlateforme() ? <Users /> : <AccesRefuse />)}
           {page === "continuite" && <ContinuiteService />}
         </div>
       </div>

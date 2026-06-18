@@ -1,3 +1,8 @@
+const ROLES_ADMIN_PLATEFORME = ["super_admin", "admin_org"]
+
+function getRole() { return localStorage.getItem("role") || "" }
+function estAdminPlateforme() { return ROLES_ADMIN_PLATEFORME.includes(getRole()) }
+
 export default function Sidebar({ page, setPage }) {
   const navItem = (icon, label, key) => (
     <div key={key} onClick={() => setPage(key)} style={{
@@ -35,8 +40,12 @@ export default function Sidebar({ page, setPage }) {
         {navItem("👥", "Contacts", "contacts")}
         {navItem("🖨️", "Documents", "documents")}
 
-        <div style={{ padding: "12px 16px 6px", fontSize: "10px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Administration</div>
-        {navItem("👤", "Utilisateurs", "users")}
+        {estAdminPlateforme() && (
+          <>
+            <div style={{ padding: "12px 16px 6px", fontSize: "10px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Administration</div>
+            {navItem("👤", "Utilisateurs", "users")}
+          </>
+        )}
       </nav>
     </aside>
   )

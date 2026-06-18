@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db, ConnecteurDB, EnregistrementDB, ModificationDB, CommentaireDB, UtilisateurDB, ServiceDB
 from app.api.auth import oauth2_scheme
 from app.security import verifier_token
-from app.roles import ROLES_ADMIN
+from app.roles import ROLES_ADMIN_PLATEFORME, ROLES_ADMIN_CONTINUITE, ROLES_ECRITURE_CONTINUITE, Role
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
@@ -22,11 +22,20 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise HTTPException(status_code=401, detail="Utilisateur introuvable")
     return user
 
-def est_admin(user: UtilisateurDB):
-    return user.role in [r.value for r in ROLES_ADMIN]
+def role_de(user):
+    return user.role.value if hasattr(user.role, "value") else user.role
 
-def services_accessibles(user: UtilisateurDB, db: Session):
-    if est_admin(user):
+def est_admin_plateforme(user):
+    return role_de(user) in [r.value for r in ROLES_ADMIN_PLATEFORME]
+
+def peut_administrer_connecteurs(user):
+    return role_de(user) in [r.value for r in ROLES_ADMIN_CONTINUITE]
+
+def peut_ecrire_continuite(user):
+    return role_de(user) in [r.value for r in ROLES_ECRITURE_CONTINUITE]
+
+def services_accessibles(user, db: Session):
+    if peut_administrer_connecteurs(user):
         return [s.id for s in db.query(ServiceDB).all()]
     return [s.id for s in user.services]
 
@@ -81,6 +90,8 @@ class EnregistrementManuel(BaseModel):
 
 @router.get("/connecteurs")
 def liste_connecteurs(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    if not peut_ecrire_continuite(user) and role_de(user) != Role.AUDITEUR.value:
+        raise HTTPException(status_code=403, detail="Accès refusé à ce module")
     svc_ids = services_accessibles(user, db)
     connecteurs = db.query(ConnecteurDB).filter(ConnecteurDB.actif == True).all()
     result = []
@@ -91,68 +102,49 @@ def liste_connecteurs(db: Session = Depends(get_db), user=Depends(get_current_us
 
 @router.post("/connecteurs")
 def creer_connecteur(data: ConnecteurCreation, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    if not est_admin(user):
-        raise HTTPException(status_code=403, detail="Réservé aux administrateurs")
+    if not peut_administrer_connecteurs(user):
+        raise HTTPException(status_code=403, detail="Réservé aux administrateurs et responsables continuité")
     c = ConnecteurDB(
-        nom=data.nom,
-        type=data.type,
-        description=data.description,
-        global_=data.global_,
-        champs=data.champs,
-        mode_import=data.mode_import
+        nom=data.nom, type=data.type, description=data.description,
+        global_=data.global_, champs=data.champs, mode_import=data.mode_import
     )
     if not data.global_ and data.service_ids:
-        services = db.query(ServiceDB).filter(ServiceDB.id.in_(data.service_ids)).all()
-        c.services = services
-    db.add(c)
-    db.commit()
-    db.refresh(c)
+        c.services = db.query(ServiceDB).filter(ServiceDB.id.in_(data.service_ids)).all()
+    db.add(c); db.commit(); db.refresh(c)
     return formater_connecteur(c)
 
 @router.put("/connecteurs/{connecteur_id}")
 def modifier_connecteur(connecteur_id: int, data: ConnecteurCreation, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    if not est_admin(user):
-        raise HTTPException(status_code=403, detail="Réservé aux administrateurs")
+    if not peut_administrer_connecteurs(user):
+        raise HTTPException(status_code=403, detail="Réservé aux administrateurs et responsables continuité")
     c = db.query(ConnecteurDB).filter(ConnecteurDB.id == connecteur_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Connecteur introuvable")
-    c.nom = data.nom
-    c.type = data.type
-    c.description = data.description
-    c.global_ = data.global_
-    c.champs = data.champs
-    c.mode_import = data.mode_import
-    if data.global_:
-        c.services = []
-    else:
-        services = db.query(ServiceDB).filter(ServiceDB.id.in_(data.service_ids or [])).all()
-        c.services = services
-    db.commit()
-    db.refresh(c)
+    c.nom = data.nom; c.type = data.type; c.description = data.description
+    c.global_ = data.global_; c.champs = data.champs; c.mode_import = data.mode_import
+    c.services = [] if data.global_ else db.query(ServiceDB).filter(ServiceDB.id.in_(data.service_ids or [])).all()
+    db.commit(); db.refresh(c)
     return formater_connecteur(c)
 
 @router.delete("/connecteurs/{connecteur_id}")
 def supprimer_connecteur(connecteur_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    if not est_admin(user):
-        raise HTTPException(status_code=403, detail="Réservé aux administrateurs")
+    if not peut_administrer_connecteurs(user):
+        raise HTTPException(status_code=403, detail="Réservé aux administrateurs et responsables continuité")
     c = db.query(ConnecteurDB).filter(ConnecteurDB.id == connecteur_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Connecteur introuvable")
-    db.delete(c)
-    db.commit()
+    db.delete(c); db.commit()
     return {"message": "Connecteur supprimé"}
 
 # ── IMPORT ──────────────────────────────────────────────────────────
 
 @router.post("/connecteurs/{connecteur_id}/importer-fichier")
 async def importer_fichier(
-    connecteur_id: int,
-    fichier: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user)
+    connecteur_id: int, fichier: UploadFile = File(...),
+    db: Session = Depends(get_db), user=Depends(get_current_user)
 ):
-    if not est_admin(user):
-        raise HTTPException(status_code=403, detail="Réservé aux administrateurs")
+    if not peut_administrer_connecteurs(user):
+        raise HTTPException(status_code=403, detail="Réservé aux administrateurs et responsables continuité")
     c = db.query(ConnecteurDB).filter(ConnecteurDB.id == connecteur_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Connecteur introuvable")
@@ -167,10 +159,15 @@ async def importer_fichier(
             lignes = data if isinstance(data, list) else [data]
 
         elif nom.endswith(".csv") or nom.endswith(".tsv"):
-            sep = "\t" if nom.endswith(".tsv") else ","
             texte = contenu.decode("utf-8-sig")
+            if nom.endswith(".tsv"):
+                sep = "\t"
+            else:
+                premiere_ligne = texte.split("\n")[0]
+                sep = ";" if premiere_ligne.count(";") > premiere_ligne.count(",") else ","
             reader = csv.DictReader(io.StringIO(texte), delimiter=sep)
             lignes = [dict(row) for row in reader]
+            lignes = [{(k or "").strip(): v for k, v in ligne.items()} for ligne in lignes]
 
         elif nom.endswith(".xlsx") or nom.endswith(".xls"):
             import openpyxl, tempfile, os
@@ -188,7 +185,6 @@ async def importer_fichier(
         elif nom.endswith(".xml"):
             import xmltodict
             data = xmltodict.parse(contenu)
-            # Chercher la première liste dans le XML
             def extraire_liste(d):
                 if isinstance(d, list): return d
                 if isinstance(d, dict):
@@ -203,17 +199,41 @@ async def importer_fichier(
         else:
             raise HTTPException(status_code=400, detail="Format non supporté. Utilisez CSV, TSV, JSON, Excel ou XML.")
 
-        champs_ids = [ch["id"] for ch in (c.champs or [])]
-        enregistrements_crees = 0
+        if not lignes:
+            raise HTTPException(status_code=400, detail="Le fichier ne contient aucune ligne de données.")
 
+        champs_ids = [ch["id"] for ch in (c.champs or [])]
+        colonnes_fichier = list(lignes[0].keys())
+
+        manquants = []
+        for cid in champs_ids:
+            trouve = any(col == cid or col.upper() == cid.upper() for col in colonnes_fichier)
+            if not trouve:
+                manquants.append(cid)
+
+        if manquants:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Import refusé. Colonnes manquantes dans le fichier : {', '.join(manquants)}. "
+                    f"Colonnes attendues : {', '.join(champs_ids)}. "
+                    f"Colonnes trouvées dans le fichier : {', '.join(colonnes_fichier)}. "
+                    f"Aucune ligne n'a été importée."
+                )
+            )
+
+        enregistrements_crees = 0
         for ligne in lignes:
             donnees = {}
             for cid in champs_ids:
-                val = ligne.get(cid) or ligne.get(cid.upper()) or ligne.get(cid.lower()) or ""
+                val = ""
+                for col in colonnes_fichier:
+                    if col == cid or col.upper() == cid.upper():
+                        val = ligne.get(col, "")
+                        break
                 donnees[cid] = str(val).strip()
             e = EnregistrementDB(
-                connecteur_id=connecteur_id,
-                donnees=donnees,
+                connecteur_id=connecteur_id, donnees=donnees,
                 importe_par=f"{user.prenom} {user.nom}"
             )
             db.add(e)
@@ -228,25 +248,14 @@ async def importer_fichier(
         raise HTTPException(status_code=400, detail=f"Erreur import : {str(ex)}")
 
 @router.post("/connecteurs/{connecteur_id}/importer-manuel")
-def importer_manuel(
-    connecteur_id: int,
-    data: EnregistrementManuel,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user)
-):
-    if not est_admin(user):
-        raise HTTPException(status_code=403, detail="Réservé aux administrateurs")
+def importer_manuel(connecteur_id: int, data: EnregistrementManuel, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    if not peut_administrer_connecteurs(user):
+        raise HTTPException(status_code=403, detail="Réservé aux administrateurs et responsables continuité")
     c = db.query(ConnecteurDB).filter(ConnecteurDB.id == connecteur_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Connecteur introuvable")
-    e = EnregistrementDB(
-        connecteur_id=connecteur_id,
-        donnees=data.donnees,
-        importe_par=f"{user.prenom} {user.nom}"
-    )
-    db.add(e)
-    db.commit()
-    db.refresh(e)
+    e = EnregistrementDB(connecteur_id=connecteur_id, donnees=data.donnees, importe_par=f"{user.prenom} {user.nom}")
+    db.add(e); db.commit(); db.refresh(e)
     return formater_enregistrement(e)
 
 # ── ENREGISTREMENTS ─────────────────────────────────────────────────
@@ -258,34 +267,31 @@ def liste_enregistrements(connecteur_id: int, db: Session = Depends(get_db), use
         raise HTTPException(status_code=404, detail="Connecteur introuvable")
     svc_ids = services_accessibles(user, db)
     if not c.global_ and not any(s.id in svc_ids for s in c.services):
-        raise HTTPException(status_code=403, detail="Accès refusé")
+        raise HTTPException(status_code=403, detail="Accès refusé : ce connecteur n'est pas associé à votre service")
     enregistrements = db.query(EnregistrementDB).filter(EnregistrementDB.connecteur_id == connecteur_id).all()
     return [formater_enregistrement(e) for e in enregistrements]
 
 @router.put("/enregistrements/{enregistrement_id}/champ")
-def modifier_champ(
-    enregistrement_id: int,
-    data: ModificationChamp,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user)
-):
+def modifier_champ(enregistrement_id: int, data: ModificationChamp, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    if not peut_ecrire_continuite(user):
+        raise HTTPException(status_code=403, detail="Votre rôle ne permet pas de modifier ces données (lecture seule)")
     e = db.query(EnregistrementDB).filter(EnregistrementDB.id == enregistrement_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="Enregistrement introuvable")
+    c = e.connecteur
+    svc_ids = services_accessibles(user, db)
+    if not c.global_ and not any(s.id in svc_ids for s in c.services):
+        raise HTTPException(status_code=403, detail="Accès refusé")
     valeur_avant = (e.donnees or {}).get(data.champ, "")
     nouvelles_donnees = dict(e.donnees or {})
     nouvelles_donnees[data.champ] = data.valeur
     e.donnees = nouvelles_donnees
     modif = ModificationDB(
-        enregistrement_id=enregistrement_id,
-        champ=data.champ,
-        valeur_avant=valeur_avant,
-        valeur_apres=data.valeur,
-        modifie_par=user.email,
-        modifie_par_nom=f"{user.prenom} {user.nom}"
+        enregistrement_id=enregistrement_id, champ=data.champ,
+        valeur_avant=valeur_avant, valeur_apres=data.valeur,
+        modifie_par=user.email, modifie_par_nom=f"{user.prenom} {user.nom}"
     )
-    db.add(modif)
-    db.commit()
+    db.add(modif); db.commit()
     return {"message": "Champ mis à jour"}
 
 @router.get("/enregistrements/{enregistrement_id}/historique")
@@ -293,14 +299,14 @@ def historique_enregistrement(enregistrement_id: int, db: Session = Depends(get_
     e = db.query(EnregistrementDB).filter(EnregistrementDB.id == enregistrement_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="Enregistrement introuvable")
+    c = e.connecteur
+    svc_ids = services_accessibles(user, db)
+    if not c.global_ and not any(s.id in svc_ids for s in c.services):
+        raise HTTPException(status_code=403, detail="Accès refusé")
     modifications = sorted(e.modifications, key=lambda m: m.date_modification, reverse=True)
     return [{
-        "id": m.id,
-        "champ": m.champ,
-        "valeur_avant": m.valeur_avant,
-        "valeur_apres": m.valeur_apres,
-        "modifie_par_nom": m.modifie_par_nom,
-        "date": m.date_modification
+        "id": m.id, "champ": m.champ, "valeur_avant": m.valeur_avant,
+        "valeur_apres": m.valeur_apres, "modifie_par_nom": m.modifie_par_nom, "date": m.date_modification
     } for m in modifications]
 
 # ── COMMENTAIRES ────────────────────────────────────────────────────
@@ -310,31 +316,30 @@ def liste_commentaires(enregistrement_id: int, db: Session = Depends(get_db), us
     e = db.query(EnregistrementDB).filter(EnregistrementDB.id == enregistrement_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="Enregistrement introuvable")
+    c = e.connecteur
+    svc_ids = services_accessibles(user, db)
+    if not c.global_ and not any(s.id in svc_ids for s in c.services):
+        raise HTTPException(status_code=403, detail="Accès refusé")
     return [{
-        "id": c.id,
-        "texte": c.texte,
-        "auteur_nom": c.auteur_nom,
-        "date": c.date
-    } for c in sorted(e.commentaires, key=lambda x: x.date, reverse=True)]
+        "id": c2.id, "texte": c2.texte, "auteur_nom": c2.auteur_nom, "date": c2.date
+    } for c2 in sorted(e.commentaires, key=lambda x: x.date, reverse=True)]
 
 @router.post("/enregistrements/{enregistrement_id}/commentaires")
-def ajouter_commentaire(
-    enregistrement_id: int,
-    data: CommentaireCreation,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user)
-):
+def ajouter_commentaire(enregistrement_id: int, data: CommentaireCreation, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    if not peut_ecrire_continuite(user):
+        raise HTTPException(status_code=403, detail="Votre rôle ne permet pas de commenter (lecture seule)")
     e = db.query(EnregistrementDB).filter(EnregistrementDB.id == enregistrement_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="Enregistrement introuvable")
-    c = CommentaireDB(
-        enregistrement_id=enregistrement_id,
-        texte=data.texte,
-        auteur=user.email,
-        auteur_nom=f"{user.prenom} {user.nom}"
+    c = e.connecteur
+    svc_ids = services_accessibles(user, db)
+    if not c.global_ and not any(s.id in svc_ids for s in c.services):
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    commentaire = CommentaireDB(
+        enregistrement_id=enregistrement_id, texte=data.texte,
+        auteur=user.email, auteur_nom=f"{user.prenom} {user.nom}"
     )
-    db.add(c)
-    db.commit()
+    db.add(commentaire); db.commit()
     return {"message": "Commentaire ajouté"}
 
 # ── EXPORT ──────────────────────────────────────────────────────────
@@ -344,6 +349,9 @@ def exporter_connecteur(connecteur_id: int, db: Session = Depends(get_db), user=
     c = db.query(ConnecteurDB).filter(ConnecteurDB.id == connecteur_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Connecteur introuvable")
+    svc_ids = services_accessibles(user, db)
+    if not c.global_ and not any(s.id in svc_ids for s in c.services):
+        raise HTTPException(status_code=403, detail="Accès refusé")
     enregistrements = db.query(EnregistrementDB).filter(EnregistrementDB.connecteur_id == connecteur_id).all()
     export = []
     for e in enregistrements:
