@@ -1,0 +1,6 @@
+export default function Retex() {
+  return <div style={{ fontFamily: "Arial" }}>
+    <h2 style={{ fontSize: "18px", fontWeight: 500 }}>Retour d'expérience</h2>
+    <p style={{ color: "#6b7280", fontSize: "13px" }}>Page en construction.</p>
+  </div>
+}
