@@ -19,6 +19,7 @@ function getToken() {
 }
 
 export default function Users(props) {
+  const hideTab = props.hideTab || null
   const [users, setUsers] = useState([])
   const [services, setServices] = useState([])
   const [activeTab, setActiveTab] = useState(props.defaultTab || "users")
@@ -202,8 +203,8 @@ export default function Users(props) {
 
       {/* TABS */}
       <div style={s.tabs}>
-        <button style={s.tab(activeTab==="users")} onClick={() => setActiveTab("users")}>👥 Utilisateurs</button>
-        <button style={s.tab(activeTab==="services")} onClick={() => setActiveTab("services")}>🏥 Services</button>
+        {hideTab !== "users" && <button style={s.tab(activeTab==="users")} onClick={() => setActiveTab("users")}>👥 Utilisateurs</button>}
+        {hideTab !== "services" && <button style={s.tab(activeTab==="services")} onClick={() => setActiveTab("services")}>🏥 Services</button>}
       </div>
 
       {/* ── ONGLET UTILISATEURS ── */}
