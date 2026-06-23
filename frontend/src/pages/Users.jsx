@@ -22,6 +22,7 @@ export default function Users(props) {
   const hideTab = props.hideTab || null
   const [users, setUsers] = useState([])
   const [services, setServices] = useState([])
+  const [roles, setRoles] = useState([])
   const [activeTab, setActiveTab] = useState(props.defaultTab || "users")
 
   // Filtres
@@ -45,11 +46,17 @@ export default function Users(props) {
   useEffect(() => {
     chargerUsers()
     chargerServices()
+    chargerRoles()
   }, [])
 
   async function chargerUsers() {
     const res = await fetch(`${API_URL}/api/users`, { headers: { Authorization: `Bearer ${getToken()}` } })
     if (res.ok) setUsers(await res.json())
+  }
+
+  async function chargerRoles() {
+    const res = await fetch(`${API_URL}/api/roles`, { headers: { Authorization: `Bearer ${getToken()}` } })
+    if (res.ok) setRoles(await res.json())
   }
 
   async function chargerServices() {
@@ -224,7 +231,7 @@ export default function Users(props) {
             </select>
             <select style={s.select} value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
               <option value="all">Tous les rôles</option>
-              {Object.keys(ROLES).map(r => <option key={r} value={r}>{ROLES[r].label}</option>)}
+              {roles.map(r => <option key={r.id} value={r.id}>{r.nom}</option>)}
             </select>
             <select style={s.select} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
               <option value="all">Tous les statuts</option>
@@ -254,7 +261,7 @@ export default function Users(props) {
                 <div style={{ ...s.formGrp, gridColumn: "1/-1" }}><label style={s.formLbl}>Email</label><input style={s.formInp} type="email" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} placeholder="email@hopital.fr" /></div>
                 <div style={s.formGrp}><label style={s.formLbl}>Rôle</label>
                   <select style={s.formInp} value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value})}>
-                    {Object.keys(ROLES).map(r => <option key={r} value={r}>{ROLES[r].label}</option>)}
+                    {roles.map(r => <option key={r.id} value={r.id}>{r.nom}</option>)}
                   </select>
                 </div>
                 <div style={s.formGrp}><label style={s.formLbl}>Statut</label>
@@ -297,7 +304,7 @@ export default function Users(props) {
             {filteredUsers.length === 0
               ? <div style={{ padding: "40px", textAlign: "center", color: "#6b7280", fontSize: "13px" }}>Aucun utilisateur trouvé</div>
               : filteredUsers.map(u => {
-                const role = ROLES[u.role] || { label: u.role, bg: "#f1f5f9", text: "#475569" }
+                const roleObj = roles.find(r => r.id === u.role); const role = roleObj ? { label: roleObj.nom, bg: roleObj.bg || "#f1f5f9", text: roleObj.couleur || "#475569" } : { label: u.role, bg: "#f1f5f9", text: "#475569" }
                 const initials = `${u.prenom?.[0]||""}${u.nom?.[0]||""}`.toUpperCase()
                 return (
                   <div key={u.id} style={s.trow}>
