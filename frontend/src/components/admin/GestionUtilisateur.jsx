@@ -27,7 +27,7 @@ export default function GestionUtilisateur() {
         ))}
       </div>
 
-      {onglet === "comptes" && <UsersContent />}
+      {onglet === "comptes" && <UsersContent key="comptes" defaultTab="users" />}
       {onglet === "profils" && <RolesDroitsContent />}
       {onglet === "equipes" && (
         <div style={{ padding: "24px", background: "#f9fafb", minHeight: "60vh" }}>
@@ -35,12 +35,7 @@ export default function GestionUtilisateur() {
           <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "8px" }}>Référentiel des équipes (ex. Cellule de crise) — à venir.</div>
         </div>
       )}
-      {onglet === "services" && (
-        <div style={{ padding: "24px", background: "#f9fafb", minHeight: "60vh" }}>
-          <div style={{ fontSize: "16px", fontWeight: 500, color: "#111" }}>Services</div>
-          <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "8px" }}>Référentiel des services / départements — à venir.</div>
-        </div>
-      )}
+      {onglet === "services" && <UsersContent key="services" defaultTab="services" />}
     </div>
   )
 }

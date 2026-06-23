@@ -18,10 +18,10 @@ function getToken() {
   return localStorage.getItem("token") || ""
 }
 
-export default function Users() {
+export default function Users(props) {
   const [users, setUsers] = useState([])
   const [services, setServices] = useState([])
-  const [activeTab, setActiveTab] = useState("users")
+  const [activeTab, setActiveTab] = useState(props.defaultTab || "users")
 
   // Filtres
   const [sortOrder, setSortOrder] = useState("az")
