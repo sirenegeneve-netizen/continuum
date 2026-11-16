@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import Column, String, Boolean, JSON
 from app.db.database import get_db, Base, engine
+from app.deps import get_current_user, exiger_admin_plateforme
 from pydantic import BaseModel
 from typing import Optional
 import uuid
@@ -38,13 +39,13 @@ ROLES_SYSTEME = [
 ]
 
 @router.get("/roles")
-def liste_roles(db: Session = Depends(get_db)):
+def liste_roles(db: Session = Depends(get_db), user=Depends(get_current_user)):
     custom = db.query(RoleDB).all()
     custom_list = [{"id": r.id, "nom": r.nom, "description": r.description, "couleur": r.couleur, "bg": r.bg, "systeme": False, "permissions": r.permissions or {}} for r in custom]
     return ROLES_SYSTEME + custom_list
 
 @router.post("/roles")
-def creer_role(data: RoleCreate, db: Session = Depends(get_db)):
+def creer_role(data: RoleCreate, db: Session = Depends(get_db), user=Depends(exiger_admin_plateforme)):
     role = RoleDB(
         id=str(uuid.uuid4()),
         nom=data.nom,
@@ -60,7 +61,7 @@ def creer_role(data: RoleCreate, db: Session = Depends(get_db)):
     return {"id": role.id, "nom": role.nom, "description": role.description, "couleur": role.couleur, "bg": role.bg, "systeme": False, "permissions": role.permissions}
 
 @router.put("/roles/{role_id}")
-def modifier_role(role_id: str, data: RoleCreate, db: Session = Depends(get_db)):
+def modifier_role(role_id: str, data: RoleCreate, db: Session = Depends(get_db), user=Depends(exiger_admin_plateforme)):
     role = db.query(RoleDB).filter(RoleDB.id == role_id).first()
     if not role:
         raise HTTPException(status_code=404, detail="Rôle introuvable")
@@ -73,7 +74,7 @@ def modifier_role(role_id: str, data: RoleCreate, db: Session = Depends(get_db))
     return {"id": role.id, "nom": role.nom, "description": role.description, "couleur": role.couleur, "bg": role.bg, "systeme": False, "permissions": role.permissions}
 
 @router.delete("/roles/{role_id}")
-def supprimer_role(role_id: str, db: Session = Depends(get_db)):
+def supprimer_role(role_id: str, db: Session = Depends(get_db), user=Depends(exiger_admin_plateforme)):
     role = db.query(RoleDB).filter(RoleDB.id == role_id).first()
     if not role:
         raise HTTPException(status_code=404, detail="Rôle introuvable")
