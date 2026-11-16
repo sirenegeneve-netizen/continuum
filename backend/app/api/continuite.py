@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 from app.db.database import get_db, ConnecteurDB, EnregistrementDB, ModificationDB, CommentaireDB, UtilisateurDB, ServiceDB
-from app.api.auth import oauth2_scheme
-from app.security import verifier_token
-from app.roles import ROLES_ADMIN_PLATEFORME, ROLES_ADMIN_CONTINUITE, ROLES_ECRITURE_CONTINUITE, Role
+from app.deps import get_current_user
+from app import config
+from app.roles import ROLES_ADMIN_PLATEFORME, ROLES_ADMIN_CONTINUITE, ROLES_ECRITURE_CONTINUITE, Role, a_permission
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
@@ -12,15 +12,6 @@ import json, csv, io
 router = APIRouter()
 
 # ── HELPERS ─────────────────────────────────────────────────────────
-
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    payload = verifier_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Token invalide")
-    user = db.query(UtilisateurDB).filter(UtilisateurDB.email == payload.get("sub")).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="Utilisateur introuvable")
-    return user
 
 def role_de(user):
     return user.role.value if hasattr(user.role, "value") else user.role
@@ -149,8 +140,13 @@ async def importer_fichier(
     if not c:
         raise HTTPException(status_code=404, detail="Connecteur introuvable")
 
-    contenu = await fichier.read()
-    nom = fichier.filename.lower()
+    contenu = await fichier.read(config.TAILLE_MAX_IMPORT_OCTETS + 1)
+    if len(contenu) > config.TAILLE_MAX_IMPORT_OCTETS:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Fichier trop volumineux (maximum {config.TAILLE_MAX_IMPORT_OCTETS // (1024 * 1024)} Mo)"
+        )
+    nom = (fichier.filename or "").lower()
     lignes = []
 
     try:
@@ -351,6 +347,8 @@ def ajouter_commentaire(enregistrement_id: int, data: CommentaireCreation, db: S
 
 @router.get("/connecteurs/{connecteur_id}/exporter")
 def exporter_connecteur(connecteur_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    if not a_permission(user.role, "exports"):
+        raise HTTPException(status_code=403, detail="Votre rôle ne permet pas d'exporter les données")
     c = db.query(ConnecteurDB).filter(ConnecteurDB.id == connecteur_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Connecteur introuvable")

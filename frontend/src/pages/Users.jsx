@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 
-const API_URL = "https://psychic-space-guide-r74pjwv5qw4pcxvr6-8000.app.github.dev"
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000"
 
 const ROLES = {
   super_admin:       { label: "Super administrateur",    bg: "#fee2e2", text: "#991b1b" },
@@ -94,7 +94,7 @@ export default function Users(props) {
     }
     if (!editUser) {
       if (!userForm.mot_de_passe) { setUserError("Le mot de passe est obligatoire."); return }
-      if (userForm.mot_de_passe.length < 8) { setUserError("Minimum 8 caractères."); return }
+      if (userForm.mot_de_passe.length < 10) { setUserError("Minimum 10 caractères."); return }
       if (userForm.mot_de_passe !== userForm.confirmer) { setUserError("Les mots de passe ne correspondent pas."); return }
     }
     const body = {
@@ -108,14 +108,25 @@ export default function Users(props) {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
       body: JSON.stringify(body)
     })
-    if (!res.ok) { const d = await res.json(); setUserError(d.detail || "Erreur"); return }
+    if (!res.ok) { setUserError(await messageErreur(res)); return }
     setShowUserForm(false)
     chargerUsers()
   }
 
+  // Le backend renvoie soit un texte (detail), soit une liste d'erreurs de validation.
+  async function messageErreur(res) {
+    try {
+      const d = await res.json()
+      if (typeof d.detail === "string") return d.detail
+      if (Array.isArray(d.detail) && d.detail[0]?.msg) return d.detail[0].msg.replace(/^Value error, /, "")
+    } catch { /* réponse non JSON */ }
+    return "Erreur"
+  }
+
   async function supprimerUser(id) {
     if (!confirm("Confirmer la suppression ?")) return
-    await fetch(`${API_URL}/api/users/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` } })
+    const res = await fetch(`${API_URL}/api/users/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` } })
+    if (!res.ok) { alert(await messageErreur(res)); return }
     chargerUsers()
   }
 

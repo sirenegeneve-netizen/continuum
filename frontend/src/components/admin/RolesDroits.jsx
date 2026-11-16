@@ -13,7 +13,7 @@ const MODULES = [
 const ACTIONS = ["lecture", "ecriture", "suppression", "administration"]
 const ACTIONS_LABELS = { lecture: "Lecture", ecriture: "Écriture", suppression: "Suppression", administration: "Administration" }
 
-const API_URL = "https://psychic-space-guide-r74pjwv5qw4pcxvr6-8000.app.github.dev"
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000"
 function getToken() { return localStorage.getItem("token") || "" }
 
 const PROFILS_DEFAUT = [

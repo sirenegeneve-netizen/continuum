@@ -1,7 +1,17 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
 from app.roles import Role
+from app.config import MIN_PASSWORD_LENGTH
+
+
+def _valider_mot_de_passe(valeur: str) -> str:
+    if len(valeur) < MIN_PASSWORD_LENGTH:
+        raise ValueError(f"Le mot de passe doit contenir au moins {MIN_PASSWORD_LENGTH} caractères")
+    if len(valeur.encode("utf-8")) > 72:
+        raise ValueError("Le mot de passe ne doit pas dépasser 72 octets")
+    return valeur
+
 
 class CriticalData(BaseModel):
     id: str
@@ -45,6 +55,11 @@ class UtilisateurCreation(BaseModel):
     actif: bool = True
     service_ids: List[int] = []
 
+    @field_validator("mot_de_passe")
+    @classmethod
+    def mot_de_passe_valide(cls, v):
+        return _valider_mot_de_passe(v)
+
 class UtilisateurModification(BaseModel):
     nom: Optional[str] = None
     prenom: Optional[str] = None
@@ -53,3 +68,18 @@ class UtilisateurModification(BaseModel):
     actif: Optional[bool] = None
     organisation: Optional[str] = None
     service_ids: Optional[List[int]] = None
+    mot_de_passe: Optional[str] = None  # réinitialisation par un administrateur
+
+    @field_validator("mot_de_passe")
+    @classmethod
+    def mot_de_passe_valide(cls, v):
+        return None if v in (None, "") else _valider_mot_de_passe(v)
+
+class ChangementMotDePasse(BaseModel):
+    ancien: str
+    nouveau: str
+
+    @field_validator("nouveau")
+    @classmethod
+    def nouveau_valide(cls, v):
+        return _valider_mot_de_passe(v)

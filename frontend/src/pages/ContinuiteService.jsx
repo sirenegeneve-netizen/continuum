@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react"
 
-const API_URL = "https://psychic-space-guide-r74pjwv5qw4pcxvr6-8000.app.github.dev"
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000"
 
 const TYPES_CONNECTEUR = {
   jira:   { label: "Jira",         couleur: "#0052cc", icon: "📋" },

@@ -1,8 +1,6 @@
 import { useState } from "react"
 
-const API_URL = "https://psychic-space-guide-r74pjwv5qw4pcxvr6-8000.app.github.dev"
-// Fallback local
-// const API_URL = "http://localhost:8000"
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000"
 
 export default function Login({ onConnexion }) {
   const [email, setEmail] = useState("")
@@ -17,7 +15,6 @@ export default function Login({ onConnexion }) {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        credentials: "include",
         body: new URLSearchParams({ username: email, password: motDePasse })
       })
       const data = await res.json()
