@@ -4,3 +4,11 @@ __pycache__/
 node_modules/
 .env
 dist/
+
+# Environnements et fichiers locaux
+.venv/
+venv/
+.pytest_cache/
+projet.zip
+storage/
+*.log
