@@ -12,3 +12,6 @@ venv/
 projet.zip
 storage/
 *.log
+
+# Identifiants générés pour le Codespace
+.codespace-acces.txt
